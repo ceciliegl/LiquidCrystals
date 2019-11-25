@@ -1,3 +1,3 @@
-# LiquidCrystals :droplet: :sparkles:
+# LiquidCrystals
 
 Code to find the distribution function for liquid crystals with spinwave entropy of spiral states.
