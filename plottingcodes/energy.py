@@ -16,5 +16,5 @@ def get_data(filename, variables):
 data = get_data("../data.nosync" + "/test_expect.txt", ["b", "E", "EE"])
 
 
-plt.semilogx(range(len(data["E"])), data["E"])
+plt.semilogx(range(0, 100*len(data["E"]), 100), data["E"])
 plt.show()

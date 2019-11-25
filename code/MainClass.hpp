@@ -52,6 +52,7 @@ public:
 
   //calcualting initial energy and magnetization
   double calc_energy();
+  double spin_wave();
   double delta_energy(int chosen_i, int leftright, double s);
 
   //run metropolis, two different ways, with and without counting accepts

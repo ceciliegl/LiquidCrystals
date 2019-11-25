@@ -39,6 +39,9 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
   {
     abssingamma(i) = abs(sin(dang*i));
   }
+
+  //cout << abssingamma << endl;
+
 }
 
 //gives a random normalized initialization
@@ -86,14 +89,20 @@ double MainClass::calc_energy()
   {
     for (int j = i+1; j < N; j++)
     {
-      int2 += 2*f(i)*f(j)*abssingamma(abs(i-j)); //dang = delta phi
+      int2 += f(i)*f(j)*abssingamma(abs(i-j)); //dang = delta phi
     }
   }
-  int2 *= 0.5*cLL*dang*dang; //*dang*dang? I så fall må du endre normaliseringen av f.
+  int2 *= cLL*dang*dang; //0.5 forsvinner fordi vi ganger med 2.
 
   energy = int1 + int2;
 
   return double(energy);
+}
+
+double MainClass::spin_wave()
+{
+  double S = 0;
+  return S;
 }
 
 double MainClass::delta_energy(int chosen_i, int leftright, double s)
@@ -114,26 +123,25 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
     dE -= f(index_vector(indices[k]))*log(2*PI*f(index_vector(indices[k])))*dang;
   }
 
+  //cout << a*s << endl;
+
   //double integral
   for (int k = 0; k < 2; k++)
   {
     for (int l = 1; l < N+1; l++)
     {
-      if (l != k)
+      a1 = (k == 0) ? 1 : -1;
+      if (index_vector(l) == index_vector(indices[0]) || index_vector(l) == index_vector(indices[1]))
       {
-        a1 = (k == 0) ? 1 : -1;
-        if (l == indices[0] || l == indices[1])
-        {
-          a2 = (l == indices[0]) ? 1 : -1;
-          K = 0.5;
-        }
-        else
-        {
-          a2 = 0;
-          K = 1;
-        }
-        dE += K*cLL*dang*dang*((f(index_vector(indices[k])) + a1*s)*(f(index_vector(l)) + a2*s) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(abs(index_vector(indices[k])-index_vector(l)));
+        a2 = (index_vector(l) == index_vector(indices[0])) ? 1 : -1;
+        K = 0.5;
       }
+      else
+      {
+        a2 = 0;
+        K = 1;
+      }
+      dE += K*cLL*dang*dang*((f(index_vector(indices[k])) + a1*s)*(f(index_vector(l)) + a2*s) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(abs(index_vector(indices[k])-index_vector(l)));
     }
   }
   return dE;
@@ -158,9 +166,11 @@ void MainClass::Metropolis()
     chosen_i = zero_to_L_distribution(generator)%N + 1; //we plus with one since we will use them on "index_vector", which is shifted by +1
     leftright = (zero_to_one_distribution(generator) > 0.5) ? 1 : -1;
 
-    //beregn den nye okkupasjonen
+    //calculate new f
     r = zero_to_one_distribution(generator);
     s = (f(index_vector(chosen_i)) + f(index_vector(chosen_i + leftright)))*r - f(index_vector(chosen_i));
+
+    //s = 0.01;
 
     delta_E = delta_energy(chosen_i, leftright, s);
     //cout << double(delta_E) << endl;
@@ -170,8 +180,9 @@ void MainClass::Metropolis()
     {
       //cout << double(delta_E) << endl;
       E += double(delta_E);     //update energy (now it is not "per site")
+      //cout << E << endl;
       f(index_vector(chosen_i)) += s;
-      f(index_vector(chosen_i + leftright)) -= s;   //update configuration
+      f(index_vector(chosen_i + leftright)) -= s;   //update f
     }
   }
 }
@@ -183,6 +194,8 @@ void MainClass::Run(double b0, double cLL0, int nr_cycles)
 
   //start by calculating the energy and magnetization of configuration
   E = calc_energy();
+
+  //cout << E << endl;
 
   //open data files
   ofstream outfile_occupations("../data.nosync/" +  filename + "_occupations.txt", std::ios_base::app);
@@ -218,12 +231,12 @@ void MainClass::Run(double b0, double cLL0, int nr_cycles)
 
     //cout << E << endl;
 
+    finalvalues += expectationvalues/nr_cycles;
+
     //write data to file
     if ( (cycle) % denominator == 0)
     {
       outfile_expect << b << " " << expectationvalues(0) << " " << expectationvalues(1) << endl;
-
-      finalvalues += expectationvalues/nr_cycles;
 
       outfile_norm << normalization() << endl;
 
