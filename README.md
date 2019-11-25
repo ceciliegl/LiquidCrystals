@@ -1,0 +1,3 @@
+# LiquidCrystals
+
+Code to find the distribution function for liquid crystals.
