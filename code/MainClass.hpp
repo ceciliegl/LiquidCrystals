@@ -18,6 +18,8 @@ public:
   double E;
   int N;
   double b;
+  double c;
+  double L;
   double cLL;
   double dang;
   //save as double to avoid overflow
@@ -28,6 +30,8 @@ public:
 
   //vectors
   Col<double> abssingamma;
+  Col<double> cosdang;
+  Col<double> sindang;
   vec expectationvalues;
   vec finalvalues;
   Col<double> f;
@@ -35,6 +39,7 @@ public:
 
   //exchange
   double J1, J2, J3;
+  double Qlen;
 
   //for timing
   double start;
@@ -59,14 +64,15 @@ public:
   double spin_wave();
   double J(double qx, double qy);
   double delta_energy(int chosen_i, int leftright, double s);
+  double delta_energy_sw(int chosen_i, int leftright, double s);
 
   //run metropolis, two different ways, with and without counting accepts
   //metroplis is called in the Run function
   void Metropolis();
-  void Run(double b0, double cLL0, int nr_cycles);
+  void Run(double b0, double c0, double L0, int nr_cycles);
 
   //time and equilibrate data, as well as reseting expectation values
-  void equilibrate(double b0, double cLL0, int nr_cycles);
+  void equilibrate(double b0, double c0, double L0, int nr_cycles);
   double normalization();
   void reset();
 

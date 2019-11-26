@@ -1,9 +1,16 @@
 #include "MainClass.hpp"
 
+
+
 const double PI = 3.1415926535897932384626433832795028841971693993751;
+const double SQRTTHREEOVERTWO = 0.8660254038;
+
+
 
 MainClass::MainClass()
 {}
+
+
 
 MainClass::MainClass(int size, string save_name, int amount_of_data)
 {
@@ -15,6 +22,8 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
 
   f = Col<double>(N);
   abssingamma = Col<double>(N);
+  cosdang = Col<double>(N);
+  sindang = Col<double>(N);
 
   expectationvalues = vec(2, fill::zeros);
   finalvalues = vec(2, fill::zeros);
@@ -38,11 +47,15 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
   for (int i = 0; i < N; i++)
   {
     abssingamma(i) = abs(sin(dang*i));
+    cosdang(i) = cos(dang*i);
+    sindang(i) = sin(dang*i);
   }
 
   //cout << abssingamma << endl;
 
 }
+
+
 
 //gives a random normalized initialization
 void MainClass::initialize_random()
@@ -60,6 +73,7 @@ void MainClass::initialize_random()
 }
 
 
+
 //gives an uniform normalized initialization
 void MainClass::initialize_uniform()
 {
@@ -70,12 +84,18 @@ void MainClass::initialize_uniform()
   }
 }
 
+
+
 void MainClass::set_exchange(double J10, double J20, double J30)
 {
   J1 = J10;
   J2 = J20;
   J3 = J30;
+
+  //for triangular lattice tror det bare gjelder for ferromagneten.
+  Qlen = 2*acos((3*J2-2*J3 - sqrt((3*J2 + 2*J3)*(3*J2 + 2*J3) + 8*J3))/(-8.0*J3));
 }
+
 
 
 //calculates total energy of system
@@ -109,13 +129,36 @@ double MainClass::calc_energy()
 double MainClass::spin_wave()
 {
   double S = 0;
+  double M = 1;
+  double Qx, Qy, JQ, kx, ky;
+  int Nk;
+  //Vi får et integral over phi
+  // Q = Qlen(cos phi, sin phi)
+  //Inni hvert integral, dvs for hver Q må vi regne ut entropien fra spinnbølgene.
+
+  //Må definere Nk, kx og ky. Vi trenger c og L separat.
+  for (int i = 0; i < N; i++)
+  {
+    Qx = Qlen*cos(dang*i);
+    Qy = Qlen*sin(dang*i);
+    JQ = J(Qx, Qy);
+    M = 1;
+    for (int k = 0; k < Nk; k++)
+    {
+      //Hva er kx og ky?
+      M *= (0.5*(J(kx+Qx, ky+Qy) + J(kx-Qx, ky-Qy)) - JQ)*(J(kx, ky) - JQ);
+    }
+    S += log(M)*f(i);
+  }
+  S *= 0.25*c*dang/double(Nk);
   return S;
 }
 
 double MainClass::J(double qx, double qy)
 {
   //This is only valid for the triangular lattice for now.
-  Jtri = J1*(cos(qx) + 2*cos(0.5*qx)*cos(SQRTTHREEOVERTWO*qy)) + J2*(cos(2*SQRTTHREEOVERTWO*qy) + 2*cos(SQRTTHREEOVERTWO*SQRTTHREEOVERTWO*2*qx)*cos(SQRTTHREEOVERTWO*qy)) + J3*(cos(2*qx) + 2*cos(qx)*cos(2*SQRTTHREEOVERTWO*qy))
+  double Jtri;
+  Jtri = J1*(cos(qx) + 2*cos(0.5*qx)*cos(SQRTTHREEOVERTWO*qy)) + J2*(cos(2*SQRTTHREEOVERTWO*qy) + 2*cos(SQRTTHREEOVERTWO*SQRTTHREEOVERTWO*2*qx)*cos(SQRTTHREEOVERTWO*qy)) + J3*(cos(2*qx) + 2*cos(qx)*cos(2*SQRTTHREEOVERTWO*qy));
   return Jtri;
 }
 
@@ -161,7 +204,39 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   return dE;
 }
 
-//Can calculate the change in energy much simpler.
+
+
+double MainClass::delta_energy_sw(int chosen_i, int leftright, double s)
+{
+  //Det er bare de leddene med index_vector(chosen_i) og index_vector(chosen_i + leftright) som endrer seg
+  double dEsw = 0;
+  int indices [2] = {chosen_i, chosen_i + leftright};
+  double Qx, Qy, JQ, M, kx, ky;
+  int Nk;
+  double a;
+
+  for (int j = 0; j < 2; j++)
+  {
+    Qx = Qlen*cosdang(index_vector(indices[j]));
+    Qy = Qlen*sindang(index_vector(indices[j]));
+    JQ = J(Qx, Qy);
+
+    M = 1;
+    for (int k = 0; k < Nk; k++)
+    {
+      //Hva er kx og ky?
+      M *= (0.5*(J(kx+Qx, ky+Qy) + J(kx-Qx, ky-Qy)) - JQ)*(J(kx, ky) - JQ);
+    }
+
+    a = (j == 0) ? 1 : -1;
+    dEsw += log(M)*(a*s);
+  }
+
+  dEsw *= 0.25*c*dang/double(Nk);
+
+  return dEsw;
+}
+
 
 
 //the selection of a random f, and using the metropolis requirement for checking if we flip or not
@@ -201,10 +276,12 @@ void MainClass::Metropolis()
   }
 }
 
-void MainClass::Run(double b0, double cLL0, int nr_cycles)
+void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
 {
   b = b0;
-  cLL = cLL0;
+  c = c0;
+  L = L0;
+  cLL = c*L*L;
 
   //start by calculating the energy and magnetization of configuration
   E = calc_energy();
@@ -264,10 +341,12 @@ void MainClass::Run(double b0, double cLL0, int nr_cycles)
 
 
 //equilibrate by simply running a given number of MC cycles
-void MainClass::equilibrate(double b0, double cLL0, int nr_cycles)
+void MainClass::equilibrate(double b0, double c0, double L0, int nr_cycles)
 {
   b = b0;
-  cLL = cLL0;
+  c = c0;
+  L = L0;
+  cLL = c*L*L;
   for (int i = 0; i < nr_cycles/10; i++) //divide by 10
     {
       Metropolis();
