@@ -33,6 +33,9 @@ public:
   Col<double> f;
   Col<int> index_vector;
 
+  //exchange
+  double J1, J2, J3;
+
   //for timing
   double start;
   double stop;
@@ -49,10 +52,12 @@ public:
   //the function names are self explanetory
   void initialize_random();
   void initialize_uniform();
+  void set_exchange(double J10, double J20, double J30);
 
-  //calcualting initial energy and magnetization
+  //calcualting initial energy and change in energy
   double calc_energy();
   double spin_wave();
+  double J(double qx, double qy);
   double delta_energy(int chosen_i, int leftright, double s);
 
   //run metropolis, two different ways, with and without counting accepts

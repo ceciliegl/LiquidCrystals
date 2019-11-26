@@ -70,6 +70,13 @@ void MainClass::initialize_uniform()
   }
 }
 
+void MainClass::set_exchange(double J10, double J20, double J30)
+{
+  J1 = J10;
+  J2 = J20;
+  J3 = J30;
+}
+
 
 //calculates total energy of system
 double MainClass::calc_energy()
@@ -103,6 +110,13 @@ double MainClass::spin_wave()
 {
   double S = 0;
   return S;
+}
+
+double MainClass::J(double qx, double qy)
+{
+  //This is only valid for the triangular lattice for now.
+  Jtri = J1*(cos(qx) + 2*cos(0.5*qx)*cos(SQRTTHREEOVERTWO*qy)) + J2*(cos(2*SQRTTHREEOVERTWO*qy) + 2*cos(SQRTTHREEOVERTWO*SQRTTHREEOVERTWO*2*qx)*cos(SQRTTHREEOVERTWO*qy)) + J3*(cos(2*qx) + 2*cos(qx)*cos(2*SQRTTHREEOVERTWO*qy))
+  return Jtri;
 }
 
 double MainClass::delta_energy(int chosen_i, int leftright, double s)
