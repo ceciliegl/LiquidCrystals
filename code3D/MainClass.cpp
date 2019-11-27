@@ -18,12 +18,11 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
   N = size;
   E = 0;
   b = 100;
-  dang = PI/float(N);
+  dx = 2/float(N);
 
   f = Col<double>(N);
-  abssingamma = Col<double>(N);
-  cosdang = Col<double>(N);
-  sindang = Col<double>(N);
+  x = Col<double>(N);
+  abssingamma = Mat<double>(N, N);
 
   expectationvalues = vec(2, fill::zeros);
   finalvalues = vec(2, fill::zeros);
@@ -46,10 +45,13 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
 
   for (int i = 0; i < N; i++)
   {
-    abssingamma(i) = abs(sin(dang*i));
-    cosdang(i) = cos(dang*i);
-    sindang(i) = sin(dang*i);
+    x(i) = -1.0 + dx*i;
   }
+  for (int i = 0; i < N; i++)
+    for (int j = 0; j < N; j++)
+    {
+      abssingamma(i, j) = abs(sqrt(1-x(i)*x(i))*x(j)-x(i)*sqrt(1-x(j)*x(j)));
+    }
 }
 
 
@@ -61,11 +63,11 @@ void MainClass::initialize_random()
   for (int i = 0; i < N; i++)
   {
     f(i) = zero_to_one_distribution(generator);
-    s += 2*PI*f(i)*sindang(i);
+    s += 2*PI*f(i);
   }
   for (int i = 0; i < N; i++)
   {
-    f(i) /= s*dang;
+    f(i) /= s*dx;
   }
 }
 
@@ -93,7 +95,7 @@ double MainClass::calc_energy()
   double int1 = 0;
   for (int i = 0; i < N; i++)
   {
-    int1 += f(i)*log(4*PI*f(i))*sindang(i)*dang; //*dang?
+    int1 += f(i)*log(4*PI*f(i))*dx; //*dang?
   }
 
   double int2 = 0;
@@ -101,10 +103,10 @@ double MainClass::calc_energy()
   {
     for (int j = i+1; j < N; j++)
     {
-      int2 += f(i)*f(j)*abssingamma(abs(i-j))*sindang(i)*sindang(j); //dang = delta phi
+      int2 += f(i)*f(j)*abssingamma(i,j); //dang = delta phi
     }
   }
-  int2 *= cLL*dang*dang; //0.5 forsvinner fordi vi ganger med 2.
+  int2 *= 2*cLLD*dx*dx; //0.5 forsvinner fordi vi ganger med 2.
 
   energy = 2*PI*int1 + 2*PI*2*PI*int2;
 
@@ -119,7 +121,6 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   int a, a1, a2;
   double K;
   double dE;
-  double sk, sl;
 
   dE = 0;
   int indices [2] = {chosen_i, chosen_i + leftright};
@@ -127,10 +128,9 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   //single integral
   for (int k = 0; k < 2; k++)
   {
-    sk = s/sindang(index_vector(indices[k]));
     a = (k == 0) ? 1 : -1;
-    dE += 2*PI*(f(index_vector(indices[k])) + a*sk)*log(4*PI*(f(index_vector(indices[k])) + a*sk))*sindang(index_vector(indices[k]))*dang;
-    dE -= 2*PI*f(index_vector(indices[k]))*log(4*PI*f(index_vector(indices[k])))*sindang(index_vector(indices[k]))*dang;
+    dE += 2*PI*(f(index_vector(indices[k])) + a*s)*log(4*PI*(f(index_vector(indices[k])) + a*s))*dx;
+    dE -= 2*PI*f(index_vector(indices[k]))*log(4*PI*f(index_vector(indices[k])))*dx;
   }
 
   //cout << a*s << endl;
@@ -140,8 +140,6 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   {
     for (int l = 1; l < N+1; l++)
     {
-      sk = s/sindang(index_vector(indices[k]));
-      sl = s/sindang(index_vector(l));
       a1 = (k == 0) ? 1 : -1;
       if (index_vector(l) == index_vector(indices[0]) || index_vector(l) == index_vector(indices[1]))
       {
@@ -153,7 +151,7 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
         a2 = 0;
         K = 1;
       }
-      dE += 2*PI*2*PI*K*cLL*dang*dang*((f(index_vector(indices[k])) + a1*sk)*(f(index_vector(l)) + a2*sl) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(abs(index_vector(indices[k])-index_vector(l)))*sindang(index_vector(indices[k]))*sindang(index_vector(l));
+      dE += 2*PI*2*PI*K*2*cLLD*dx*dx*((f(index_vector(indices[k])) + a1*s)*(f(index_vector(l)) + a2*s) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(index_vector(indices[k]), index_vector(l));
     }
   }
   return dE;
@@ -179,7 +177,7 @@ void MainClass::Metropolis()
 
     //calculate new f
     r = zero_to_one_distribution(generator);
-    s = (f(index_vector(chosen_i))*sindang(index_vector(chosen_i)) + f(index_vector(chosen_i + leftright))*sindang(index_vector(chosen_i + leftright)))*r - f(index_vector(chosen_i))*sindang(index_vector(chosen_i));
+    s = (f(index_vector(chosen_i)) + f(index_vector(chosen_i + leftright)))*r - f(index_vector(chosen_i));
 
     //s = 0.01;
 
@@ -192,18 +190,19 @@ void MainClass::Metropolis()
       //cout << double(delta_E) << endl;
       E += double(delta_E);     //update energy (now it is not "per site")
       //cout << E << endl;
-      f(index_vector(chosen_i)) += s/sindang(index_vector(chosen_i));
-      f(index_vector(chosen_i + leftright)) -= s/sindang(index_vector(chosen_i + leftright));   //update f
+      f(index_vector(chosen_i)) += s;
+      f(index_vector(chosen_i + leftright)) -= s;   //update f
     }
   }
 }
 
-void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
+void MainClass::Run(double b0, double c0, double L0, double D0, int nr_cycles)
 {
   b = b0;
   c = c0;
   L = L0;
-  cLL = c*L*L;
+  D = D0;
+  cLLD = c*L*L*D;
 
   //start by calculating the energy and magnetization of configuration
   E = calc_energy();
@@ -259,18 +258,19 @@ void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
 
 
   }
-  outfile_final << c << " " << L << " " << b << " " << finalvalues(0) << " " << finalvalues(1) << "\n";
+  outfile_final << c << " " << L << " " << " " << D << " " << b << " " << finalvalues(0) << " " << finalvalues(1) << "\n";
   write_occupations(outfile_occupations);
 }
 
 
 //equilibrate by simply running a given number of MC cycles
-void MainClass::equilibrate(double b0, double c0, double L0, int nr_cycles)
+void MainClass::equilibrate(double b0, double c0, double L0, double D0, int nr_cycles)
 {
   b = b0;
   c = c0;
   L = L0;
-  cLL = c*L*L;
+  D = D0;
+  cLLD = c*L*L*D;
   for (int i = 0; i < nr_cycles/10; i++) //divide by 10
     {
       Metropolis();
@@ -282,9 +282,9 @@ double MainClass::normalization()
   double s = 0;
   for (int i = 0; i < N; i++)
   {
-    s += f(i)*sindang(i);
+    s += f(i);
   }
-  s *= 2*PI*dang;
+  s *= 2*PI*dx;
   return s;
 }
 

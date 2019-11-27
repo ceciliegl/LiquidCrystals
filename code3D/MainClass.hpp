@@ -20,8 +20,9 @@ public:
   double b;
   double c;
   double L;
-  double cLL;
-  double dang;
+  double D;
+  double cLLD;
+  double dx;
   //save as double to avoid overflow
 
   //for writing to file
@@ -29,9 +30,8 @@ public:
   int data_lines;
 
   //vectors
-  Col<double> abssingamma;
-  Col<double> cosdang;
-  Col<double> sindang;
+  Mat<double> abssingamma;
+  Col<double> x;
   vec expectationvalues;
   vec finalvalues;
   Col<double> f;
@@ -69,10 +69,10 @@ public:
   //run metropolis, two different ways, with and without counting accepts
   //metroplis is called in the Run function
   void Metropolis();
-  void Run(double b0, double c0, double L0, int nr_cycles);
+  void Run(double b0, double c0, double L0, double D0, int nr_cycles);
 
   //time and equilibrate data, as well as reseting expectation values
-  void equilibrate(double b0, double c0, double L0, int nr_cycles);
+  void equilibrate(double b0, double c0, double L0, double D0, int nr_cycles);
   double normalization();
   void reset();
 
