@@ -13,7 +13,7 @@ def get_data(filename, variables):
     return df
     #using pandas to read the data files
 
-data = get_data("../data.nosync" + "/test_expect.txt", ["b", "E", "EE"])
+data = get_data("../data.nosync" + "/test_expect.txt", ["c", "L", "b", "E", "EE"])
 
 
 plt.semilogx(range(0, 100*len(data["E"]), 100), data["E"])

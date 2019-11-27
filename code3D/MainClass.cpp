@@ -18,7 +18,7 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
   N = size;
   E = 0;
   b = 100;
-  dang = 2*PI/float(N);
+  dang = PI/float(N);
 
   f = Col<double>(N);
   abssingamma = Col<double>(N);
@@ -50,9 +50,6 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
     cosdang(i) = cos(dang*i);
     sindang(i) = sin(dang*i);
   }
-
-  //cout << abssingamma << endl;
-
 }
 
 
@@ -64,7 +61,7 @@ void MainClass::initialize_random()
   for (int i = 0; i < N; i++)
   {
     f(i) = zero_to_one_distribution(generator);
-    s += f(i);
+    s += 2*PI*f(i)*sindang(i);
   }
   for (int i = 0; i < N; i++)
   {
@@ -77,23 +74,11 @@ void MainClass::initialize_random()
 //gives an uniform normalized initialization
 void MainClass::initialize_uniform()
 {
-  double val = 1.0/double(2*PI);
+  double val = 1.0/double(4*PI);
   for (int i = 0; i < N; i++)
   {
     f(i) = val;
   }
-}
-
-
-
-void MainClass::set_exchange(double J10, double J20, double J30)
-{
-  J1 = J10;
-  J2 = J20;
-  J3 = J30;
-
-  //for triangular lattice tror det bare gjelder for ferromagneten.
-  Qlen = 2*acos((3*J2-2*J3 - sqrt((3*J2 + 2*J3)*(3*J2 + 2*J3) + 8*J3))/(-8.0*J3));
 }
 
 
@@ -108,7 +93,7 @@ double MainClass::calc_energy()
   double int1 = 0;
   for (int i = 0; i < N; i++)
   {
-    int1 += f(i)*log(2*PI*f(i))*dang; //*dang?
+    int1 += f(i)*log(4*PI*f(i))*sindang(i)*dang; //*dang?
   }
 
   double int2 = 0;
@@ -116,51 +101,17 @@ double MainClass::calc_energy()
   {
     for (int j = i+1; j < N; j++)
     {
-      int2 += f(i)*f(j)*abssingamma(abs(i-j)); //dang = delta phi
+      int2 += f(i)*f(j)*abssingamma(abs(i-j))*sindang(i)*sindang(j); //dang = delta phi
     }
   }
   int2 *= cLL*dang*dang; //0.5 forsvinner fordi vi ganger med 2.
 
-  energy = int1 + int2;
+  energy = 2*PI*int1 + 2*PI*2*PI*int2;
 
   return double(energy);
 }
 
-double MainClass::spin_wave()
-{
-  double S = 0;
-  double M = 1;
-  double Qx, Qy, JQ, kx, ky;
-  int Nk;
-  //Vi får et integral over phi
-  // Q = Qlen(cos phi, sin phi)
-  //Inni hvert integral, dvs for hver Q må vi regne ut entropien fra spinnbølgene.
 
-  //Må definere Nk, kx og ky. Vi trenger c og L separat.
-  for (int i = 0; i < N; i++)
-  {
-    Qx = Qlen*cos(dang*i);
-    Qy = Qlen*sin(dang*i);
-    JQ = J(Qx, Qy);
-    M = 1;
-    for (int k = 0; k < Nk; k++)
-    {
-      //Hva er kx og ky?
-      M *= (0.5*(J(kx+Qx, ky+Qy) + J(kx-Qx, ky-Qy)) - JQ)*(J(kx, ky) - JQ);
-    }
-    S += log(M)*f(i);
-  }
-  S *= 0.25*c*dang/double(Nk);
-  return S;
-}
-
-double MainClass::J(double qx, double qy)
-{
-  //This is only valid for the triangular lattice for now.
-  double Jtri;
-  Jtri = J1*(cos(qx) + 2*cos(0.5*qx)*cos(SQRTTHREEOVERTWO*qy)) + J2*(cos(2*SQRTTHREEOVERTWO*qy) + 2*cos(SQRTTHREEOVERTWO*SQRTTHREEOVERTWO*2*qx)*cos(SQRTTHREEOVERTWO*qy)) + J3*(cos(2*qx) + 2*cos(qx)*cos(2*SQRTTHREEOVERTWO*qy));
-  return Jtri;
-}
 
 double MainClass::delta_energy(int chosen_i, int leftright, double s)
 {
@@ -168,6 +119,7 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   int a, a1, a2;
   double K;
   double dE;
+  double sk, sl;
 
   dE = 0;
   int indices [2] = {chosen_i, chosen_i + leftright};
@@ -175,9 +127,10 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   //single integral
   for (int k = 0; k < 2; k++)
   {
+    sk = s/sindang(index_vector(indices[k]));
     a = (k == 0) ? 1 : -1;
-    dE += (f(index_vector(indices[k])) + a*s)*log(2*PI*(f(index_vector(indices[k])) + a*s))*dang;
-    dE -= f(index_vector(indices[k]))*log(2*PI*f(index_vector(indices[k])))*dang;
+    dE += 2*PI*(f(index_vector(indices[k])) + a*sk)*log(4*PI*(f(index_vector(indices[k])) + a*sk))*sindang(index_vector(indices[k]))*dang;
+    dE -= 2*PI*f(index_vector(indices[k]))*log(4*PI*f(index_vector(indices[k])))*sindang(index_vector(indices[k]))*dang;
   }
 
   //cout << a*s << endl;
@@ -187,6 +140,8 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
   {
     for (int l = 1; l < N+1; l++)
     {
+      sk = s/sindang(index_vector(indices[k]));
+      sl = s/sindang(index_vector(l));
       a1 = (k == 0) ? 1 : -1;
       if (index_vector(l) == index_vector(indices[0]) || index_vector(l) == index_vector(indices[1]))
       {
@@ -198,43 +153,10 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
         a2 = 0;
         K = 1;
       }
-      dE += K*cLL*dang*dang*((f(index_vector(indices[k])) + a1*s)*(f(index_vector(l)) + a2*s) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(abs(index_vector(indices[k])-index_vector(l)));
+      dE += 2*PI*2*PI*K*cLL*dang*dang*((f(index_vector(indices[k])) + a1*sk)*(f(index_vector(l)) + a2*sl) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(abs(index_vector(indices[k])-index_vector(l)))*sindang(index_vector(indices[k]))*sindang(index_vector(l));
     }
   }
   return dE;
-}
-
-
-
-double MainClass::delta_energy_sw(int chosen_i, int leftright, double s)
-{
-  //Det er bare de leddene med index_vector(chosen_i) og index_vector(chosen_i + leftright) som endrer seg
-  double dEsw = 0;
-  int indices [2] = {chosen_i, chosen_i + leftright};
-  double Qx, Qy, JQ, M, kx, ky;
-  int Nk;
-  double a;
-
-  for (int j = 0; j < 2; j++)
-  {
-    Qx = Qlen*cosdang(index_vector(indices[j]));
-    Qy = Qlen*sindang(index_vector(indices[j]));
-    JQ = J(Qx, Qy);
-
-    M = 1;
-    for (int k = 0; k < Nk; k++)
-    {
-      //Hva er kx og ky?
-      M *= (0.5*(J(kx+Qx, ky+Qy) + J(kx-Qx, ky-Qy)) - JQ)*(J(kx, ky) - JQ);
-    }
-
-    a = (j == 0) ? 1 : -1;
-    dEsw += log(M)*(a*s);
-  }
-
-  dEsw *= 0.25*c*dang/double(Nk);
-
-  return dEsw;
 }
 
 
@@ -257,7 +179,7 @@ void MainClass::Metropolis()
 
     //calculate new f
     r = zero_to_one_distribution(generator);
-    s = (f(index_vector(chosen_i)) + f(index_vector(chosen_i + leftright)))*r - f(index_vector(chosen_i));
+    s = (f(index_vector(chosen_i))*sindang(index_vector(chosen_i)) + f(index_vector(chosen_i + leftright))*sindang(index_vector(chosen_i + leftright)))*r - f(index_vector(chosen_i))*sindang(index_vector(chosen_i));
 
     //s = 0.01;
 
@@ -270,8 +192,8 @@ void MainClass::Metropolis()
       //cout << double(delta_E) << endl;
       E += double(delta_E);     //update energy (now it is not "per site")
       //cout << E << endl;
-      f(index_vector(chosen_i)) += s;
-      f(index_vector(chosen_i + leftright)) -= s;   //update f
+      f(index_vector(chosen_i)) += s/sindang(index_vector(chosen_i));
+      f(index_vector(chosen_i + leftright)) -= s/sindang(index_vector(chosen_i + leftright));   //update f
     }
   }
 }
@@ -289,20 +211,20 @@ void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
   //cout << E << endl;
 
   //open data files
-  ofstream outfile_occupations("../data.nosync/" +  filename + "_occupations.txt", std::ios_base::app);
+  ofstream outfile_occupations("../data3D.nosync/" +  filename + "_occupations.txt", std::ios_base::app);
   if (!outfile_occupations.is_open())
      cout<<"Could not open file" << endl;
 
-  ofstream outfile_final("../data.nosync/" + filename + "_final.txt", std::ios_base::app);
+  ofstream outfile_final("../data3D.nosync/" + filename + "_final.txt", std::ios_base::app);
   if (!outfile_final.is_open())
      cout<<"Could not open file" << endl;
 
 
-  ofstream outfile_expect("../data.nosync/" + filename + "_expect.txt", std::ios_base::app);
+  ofstream outfile_expect("../data3D.nosync/" + filename + "_expect.txt", std::ios_base::app);
   if (!outfile_expect.is_open())
     cout<<"Could not open file" << endl;
 
-  ofstream outfile_norm("../data.nosync/" + filename + "_normalization.txt", std::ios_base::app);
+  ofstream outfile_norm("../data3D.nosync/" + filename + "_normalization.txt", std::ios_base::app);
   if (!outfile_norm.is_open())
     cout<<"Could not open file" << endl;
 
@@ -325,7 +247,7 @@ void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
     finalvalues += expectationvalues/nr_cycles;
 
     //write data to file
-    /*
+
     if ( (cycle) % denominator == 0)
     {
       outfile_expect << c << " " << L << " " << b << " " << expectationvalues(0) << " " << expectationvalues(1) << endl;
@@ -334,7 +256,7 @@ void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
 
       //write_occupations(outfile_occupations);
     }
-    */
+
 
   }
   outfile_final << c << " " << L << " " << b << " " << finalvalues(0) << " " << finalvalues(1) << "\n";
@@ -360,9 +282,9 @@ double MainClass::normalization()
   double s = 0;
   for (int i = 0; i < N; i++)
   {
-    s += f(i);
+    s += f(i)*sindang(i);
   }
-  s *= dang;
+  s *= 2*PI*dang;
   return s;
 }
 

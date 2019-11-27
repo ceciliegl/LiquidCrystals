@@ -28,7 +28,7 @@ int main(int argc, char const *argv[])
 
   test.initialize_uniform();
   //run for b = 1/T
-  for (double c = 6.8; c <= 10; c += 0.2)
+  for (double c = 1; c <= 7; c += 0.1)
   {
     for (double A = 1; A <= 10; A += 1)
     {
