@@ -17,12 +17,14 @@ class MainClass
 public:
   double E;
   int N;
+  int Nphi;
   double b;
   double c;
   double L;
   double D;
   double cLLD;
   double dx;
+  double dphi;
   //save as double to avoid overflow
 
   //for writing to file
@@ -74,6 +76,7 @@ public:
   //time and equilibrate data, as well as reseting expectation values
   void equilibrate(double b0, double c0, double L0, double D0, int nr_cycles);
   double normalization();
+  double phiintegral(double cosi, double cosj, double sini, double sinj);
   void reset();
 
   //write data to file

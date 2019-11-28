@@ -13,7 +13,7 @@ def get_data(filename, variables):
     return df
     #using pandas to read the data files
 
-data = get_data("../data3D.nosync" + "/test_final.txt", ["c", "L", "b", "E", "EE"])
+data = get_data("../data3D.nosync" + "/test_final.txt", ["c", "L", "D", "b", "E", "EE"])
 
 f = []
 cLLD = []
@@ -27,9 +27,14 @@ for i in range(len(data["c"])):
 
 
 cLLD = np.array(cLLD)
+f = np.array(f)
+
+indices = np.argsort(cLLD)
+cLLD = cLLD[indices]
+f = f[indices]
 
 #plt.plot(1/cLL, cLL/np.pi)
-plt.plot(cLLD, cLLD*3*np.pi/32)
+#plt.plot(cLLD, cLLD*3*np.pi/16) #+ np.log(cLLD)
 plt.plot(cLLD, f, 'o-')
 plt.xlabel(r"$cL^2D$")
 plt.ylabel(r"$f$")

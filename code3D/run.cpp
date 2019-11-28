@@ -29,13 +29,16 @@ int main(int argc, char const *argv[])
 
   test.initialize_uniform();
   //run for b = 1/T
-  for (double c = 2.; c <= 7; c += 0.1)
+  for (double c = 1; c <= 7; c += 0.5)
   {
     for (double A = 1; A <= 10; A += 1)
     {
       b = pow(10, A);
+      //cout << "Hi" << endl;
       test.equilibrate(b, c, L, D, pow(10, exp_MC_cyc-2));
+      //cout << "Hi2" << endl;
       test.Run(b, c, L, D, pow(10, exp_MC_cyc));
+      //cout << "Hi3" << endl;
       test.reset();
     }
   }

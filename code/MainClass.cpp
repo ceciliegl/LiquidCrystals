@@ -306,6 +306,10 @@ void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
   if (!outfile_norm.is_open())
     cout<<"Could not open file" << endl;
 
+  ofstream outfile_OP("../data.nosync/" + filename + "_OP.txt", std::ios_base::app);
+  if (!outfile_OP.is_open())
+    cout<<"Could not open file" << endl;
+
   //write f to file before we start, so we know initial configuration
   //write_occupations(outfile_occupations);
 
@@ -339,6 +343,7 @@ void MainClass::Run(double b0, double c0, double L0, int nr_cycles)
   }
   outfile_final << c << " " << L << " " << b << " " << finalvalues(0) << " " << finalvalues(1) << "\n";
   write_occupations(outfile_occupations);
+  outfile_OP << c << " " << L << " " << b << " " << OP() << "\n";
 }
 
 
@@ -363,6 +368,25 @@ double MainClass::normalization()
     s += f(i);
   }
   s *= dang;
+  return s;
+}
+
+double MainClass::OP()
+{
+  //First, find index of maximum of f.
+  int imax = 0;
+  for (int i = 0; i < N; i++)
+    if (f(i) > f(imax))
+      imax = i;
+
+  double s = 0;
+
+  for (int i = 0; i < N; i++)
+  {
+    s += f(i)*cos2dang(abs(i-imax));
+  }
+  s *= dang;
+
   return s;
 }
 

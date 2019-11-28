@@ -74,6 +74,7 @@ public:
   //time and equilibrate data, as well as reseting expectation values
   void equilibrate(double b0, double c0, double L0, int nr_cycles);
   double normalization();
+  double OP();
   void reset();
 
   //write data to file

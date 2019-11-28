@@ -16,9 +16,11 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
 {
   //initalize everything which is decleared in .hpp
   N = size;
+  Nphi = 100000;
   E = 0;
   b = 100;
-  dx = 2/float(N);
+  dx = 2.0/float(N);
+  dphi = 2*PI/float(Nphi);
 
   f = Col<double>(N);
   x = Col<double>(N);
@@ -43,14 +45,24 @@ MainClass::MainClass(int size, string save_name, int amount_of_data)
   index_vector(N+1) = 0;
 
 
+  //Jeg må regne ut phi-integralet for hver kombinasjon av theta.
+
+  double cosi, cosj, sini, sinj;
   for (int i = 0; i < N; i++)
   {
     x(i) = -1.0 + dx*i;
+    //cout << x(i) << endl;
   }
   for (int i = 0; i < N; i++)
     for (int j = 0; j < N; j++)
     {
-      abssingamma(i, j) = abs(sqrt(1-x(i)*x(i))*x(j)-x(i)*sqrt(1-x(j)*x(j)));
+      cosi = x(i);
+      sini = sqrt(1 - cosi*cosi);
+      cosj = x(j);
+      sinj = sqrt(1 - cosj*cosj);
+
+      abssingamma(i, j) = phiintegral(cosi, cosj, sini, sinj);
+      //cout << abssingamma(i, j) << endl;
     }
 }
 
@@ -95,7 +107,7 @@ double MainClass::calc_energy()
   double int1 = 0;
   for (int i = 0; i < N; i++)
   {
-    int1 += f(i)*log(4*PI*f(i))*dx; //*dang?
+    int1 += f(i)*log(4*PI*f(i))*dx;
   }
 
   double int2 = 0;
@@ -108,7 +120,9 @@ double MainClass::calc_energy()
   }
   int2 *= 2*cLLD*dx*dx; //0.5 forsvinner fordi vi ganger med 2.
 
-  energy = 2*PI*int1 + 2*PI*2*PI*int2;
+  energy = 2*PI*int1 + int2;
+
+  //cout << energy << endl;
 
   return double(energy);
 }
@@ -151,7 +165,7 @@ double MainClass::delta_energy(int chosen_i, int leftright, double s)
         a2 = 0;
         K = 1;
       }
-      dE += 2*PI*2*PI*K*2*cLLD*dx*dx*((f(index_vector(indices[k])) + a1*s)*(f(index_vector(l)) + a2*s) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(index_vector(indices[k]), index_vector(l));
+      dE += K*2*cLLD*dx*dx*((f(index_vector(indices[k])) + a1*s)*(f(index_vector(l)) + a2*s) - f(index_vector(indices[k]))*f(index_vector(l)))*abssingamma(index_vector(indices[k]), index_vector(l));
     }
   }
   return dE;
@@ -286,6 +300,55 @@ double MainClass::normalization()
   }
   s *= 2*PI*dx;
   return s;
+}
+
+double MainClass::phiintegral(double cosi, double cosj, double sini, double sinj)
+{
+  double integral = 0;
+  double a, b;
+
+  //int g(phi) dphi fra a = 0 til b = 2pi
+
+  b = (sini*sinj + cosi*cosj);
+  if (b > 1 || b < -1)
+  {
+    //cout << b-1 << endl;
+    integral += 0; // f(a) + f(b)
+  }
+  else
+  {
+    integral += 2*sqrt(1 - b*b); // f(a) + f(b)
+  }
+
+  //cout << integral << endl;
+
+  //Nphi må være partall.
+
+  for (int i = 1; i < Nphi; i++)
+  {
+    a = (i%2 == 0) ? 2 : 4;
+    b = (cos(dphi*i)*sini*sinj + cosi*cosj);
+    if (b > 1 || b < -1)
+    {
+      //cout << b-1 << endl;
+      integral += 0;
+    }
+    else
+    {
+      integral += a*sqrt(1 - b*b);
+    }
+  }
+
+  if (Nphi%2 != 0)
+  {
+    cout << "N must be even for Simpson's method to work." << endl;
+  }
+
+  integral *= dphi/3; //pre factor in Simpson's rule
+
+  integral *= 2*PI; //Det andre phi-integralet
+
+  return integral;
 }
 
 void MainClass::reset()
